@@ -57,7 +57,7 @@ int bam_read_idx_show_main(int argc, char** argv)
     bam_read_idx* bri = bam_read_idx_load(NULL, input_bri);
 
     for(size_t i = 0; i < bri->record_count; ++i) {
-        printf("%s\n", bri->records[i].read_name.ptr);
+        printf("%s %zu\n", bri->records[i].read_name.ptr, bri->records[i].n_aln);
     }
 
     return 0;
