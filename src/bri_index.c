@@ -158,8 +158,19 @@ void bam_read_idx_save(bam_read_idx* bri, const char* filename)
 void bam_read_idx_add(bam_read_idx* bri, const char* readname, size_t offset)
 {
     // 
-    // add readname to collection
+    // add readname to collection if not seen, otherwise keep original offset
     //
+
+    if(bri->record_count > 0){
+        const char* orn = bri->readnames + bri->records[bri->record_count - 1].read_name.offset ;
+        if(strcmp(orn, readname) == 0) {
+            bri->records[bri->record_count - 1].n_aln += 1; 
+          //  bri->records[bri->record_count - 1].file_offset = offset;
+           // printf("%s %s\n", bri->readnames + bri->records[bri->record_count - 1].read_name.offset, readname);
+            return;
+        }
+    }
+    
     size_t len = strlen(readname) + 1;
     if(bri->name_capacity_bytes <= bri->name_count_bytes + len) {
 
@@ -182,7 +193,7 @@ void bam_read_idx_add(bam_read_idx* bri, const char* readname, size_t offset)
         fprintf(stderr, "[bri] incoming name with length %zu is too large (%zu %zu)\n", len, bri->name_count_bytes + len, bri->name_capacity_bytes);
         exit(EXIT_FAILURE);
     }
-
+    
     // copy name
     size_t name_offset = bri->name_count_bytes;
     strncpy(bri->readnames + bri->name_count_bytes, readname, len);
@@ -200,10 +211,11 @@ void bam_read_idx_add(bam_read_idx* bri, const char* readname, size_t offset)
             exit(EXIT_FAILURE);
         }
     }
-
+    bri->records[bri->record_count].n_aln = 1;
     bri->records[bri->record_count].read_name.offset = name_offset;
     bri->records[bri->record_count].file_offset = offset;
     bri->record_count += 1;
+    
 }
 
 //
@@ -220,13 +232,21 @@ void bam_read_idx_build(const char* filename, const char* output_bri)
     bam1_t* b = bam_init1();
     bam_hdr_t *h = sam_hdr_read(fp);
     int ret = 0;
+    int niter = 0;
     size_t file_offset = bgzf_tell(fp->fp.bgzf);
     while ((ret = sam_read1(fp, h, b)) >= 0) {
-        char* readname = bam_get_qname(b);
+        char* readname ;
+        uint8_t* aux_info = bam_aux_get(b, "CB") ;
+        if (aux_info) {
+            readname = bam_aux2Z(aux_info) ;
+        } else {
+            continue;
+        }
+        
         bam_read_idx_add(bri, readname, file_offset);
 
         bam_read_idx_record brir = bri->records[bri->record_count - 1];
-        if(verbose && (bri->record_count == 1 || bri->record_count % 100000 == 0)) {
+        if(verbose && (niter == 1 || niter % 100000 == 0)) {
             fprintf(stderr, "[bri-build] record %zu [%zu %zu] %s\n",
                 bri->record_count,
                 brir.read_name.offset,
@@ -234,7 +254,7 @@ void bam_read_idx_build(const char* filename, const char* output_bri)
                 bri->readnames + brir.read_name.offset
             );
         }
-
+        niter += 1;
         // update offset for next record
         file_offset = bgzf_tell(fp->fp.bgzf);
     }

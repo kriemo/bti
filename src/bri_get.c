@@ -120,29 +120,46 @@ int bam_read_idx_get_main(int argc, char** argv)
     }
 
     char* input_bam = argv[optind++];
-
+    
     bam_read_idx* bri = bam_read_idx_load(input_bam, input_bri);
     
-    htsFile* bam_fp = hts_open(input_bam, "r");
-    bam_hdr_t* h = sam_hdr_read(bam_fp);
-    htsFile* out_fp = hts_open("-", "w");
-
+    htsFile *bam_fp = sam_open(input_bam, "r");
+    bam_hdr_t *h = sam_hdr_read(bam_fp);
+    htsFile *out_fp ;
+    out_fp = hts_open("-", "wb");
+    
+    sam_hdr_write(out_fp, h);
+    
     bam_read_idx_record* start;
     bam_read_idx_record* end;
 
     for(int i = optind; i < argc; i++) {
         char* readname = argv[i];
         bam_read_idx_get_range(bri, readname, &start, &end);
-        bam1_t* b = bam_init1();
+        
+        bam1_t *b = bam_init1();
+        int n_rec = 0;
         while(start != end) {
-            
-            bam_read_idx_get_by_record(bam_fp, h, b, start);
-            int ret = sam_write1(out_fp, h, b);
-            if(ret < 0) {
-                fprintf(stderr, "[bri] sam_write1 failed\n");
+            int ret = bgzf_seek(bam_fp->fp.bgzf , start->file_offset, SEEK_SET);
+            if(ret != 0) {
+                fprintf(stderr, "[bri] bgzf_seek failed\n");
                 exit(EXIT_FAILURE);
             }
+            
+            while(n_rec < start->n_aln){
+                ret = sam_read1(bam_fp, h, b);
+                if(ret < 0) {
+                    fprintf(stderr, "[bri] sam_read1 failed\n");
+                    exit(EXIT_FAILURE);
+                }
+                int ret = sam_write1(out_fp, h, b);
+                if(ret < 0) {
+                    fprintf(stderr, "[bri] sam_write1 failed\n");
+                    exit(EXIT_FAILURE);
+                }
+                n_rec += 1;
 
+            }
             start++;
         }
         bam_destroy1(b);

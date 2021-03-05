@@ -20,6 +20,7 @@
 // An entry record in the index, storing
 // either an offset or pointer to the readname
 // and a position in the bgzf-compressed bam file.
+// Also stores the # of alignments with a given tag/readname
 typedef struct bam_read_idx_record
 {
     // When building the index and storing it on disk
@@ -33,11 +34,12 @@ typedef struct bam_read_idx_record
     } read_name;
 
     size_t file_offset;
+    size_t n_aln;
 } bam_read_idx_record;
 
 //
 // The index itself consists of two parts,
-//  1) a memory block containing the names of every indexed read
+//  1) a memory block containing the names of every unique indexed read/tag
 //  2) records (see above) describing the position in the file for each alignment
 //
 typedef struct bam_read_idx
