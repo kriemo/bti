@@ -1,6 +1,6 @@
-# Bam Read Index (bti)
+# Bam Tag Index (bti)
 
-`bti` is a small tool to quickly retrieve alignments in a bam file by tag and is a minor modification and fork of the `bri` repo. With 10x genomics and other single cell data, it is sometimes desirable to extract all of the alignments for a particular cell or molecular barcode. `bti` is designed for this usecase and provides both a command line interface and htslib-inspired API. The index for ~15Gb of 10x Genomics single cell RNA-Seq data  with ~ 400K barcodes is under 20 MB, and querying takes ~ 1 sec per cellbarcode.
+`bti` is a small tool to quickly retrieve alignments in a bam file by tag and is a minor modification and fork of the [`bri`](https://github.com/jts/bri) repo. With 10x genomics and other single cell data, it is sometimes desirable to extract all of the alignments for a particular cell or molecular barcode. `bti` is designed for this usecase and provides both a command line interface and htslib-inspired API. The index for ~15Gb of 10x Genomics single cell RNA-Seq data  with ~ 400K barcodes is under 20 MB, and querying takes ~ 1 sec per cellbarcode.
 
 ## Installation
 
@@ -12,7 +12,7 @@ make HTSDIR=/path/to/htslib
 
 ## Usage
 
-First sort the bam file by the tag of interest (only string type "Z" tags are implemented fo now) using `samtools sort -t CB`
+First sort the bam file by the tag of interest (only string type "Z" tags are implemented for now) using `samtools sort -t CB`
 
 Then index the bam file by tag (hardcoded as CB for now):
 
