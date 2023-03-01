@@ -65,19 +65,19 @@ int bam_read_idx_test_main(int argc, char** argv)
     bam_hdr_t* h = sam_hdr_read(bam_fp);
     bam1_t* b = bam_init1();
 
-    // iterate over each record and run get on each readname
-    const char* prev_readname = NULL;
+    // iterate over each record and run get on each tagvalue
+    const char* prev_tagvalue = NULL;
     for(size_t ri = 0; ri < bti->record_count; ++ri) {
-        const char* readname = bti->records[ri].read_name.ptr;
+        const char* tagvalue = bti->records[ri].read_name.ptr;
 
-        // skip if same as previous readname
-        if(readname == prev_readname) {
+        // skip if same as previous tagvalue
+        if(tagvalue == prev_tagvalue) {
             continue;
         }
 
         bam_read_idx_record* start;
         bam_read_idx_record* end;
-        bam_read_idx_get_range(bti, readname, &start, &end);
+        bam_read_idx_get_range(bti, tagvalue, &start, &end);
         while(start != end) {
         
             bam_read_idx_get_by_record(bam_fp, h, b, start);
@@ -89,8 +89,8 @@ int bam_read_idx_test_main(int argc, char** argv)
               continue;
             }
 
-            fprintf(stderr, "[bti-test] %s %s\n", readname, cur_tag);
-            assert(strcmp(readname, cur_tag) == 0);
+            fprintf(stderr, "[bti-test] %s %s\n", tagvalue, cur_tag);
+            assert(strcmp(tagvalue, cur_tag) == 0);
 
             // mark this record as used so we can make sure every record is present in the bam
             // this destroys the index
@@ -98,7 +98,7 @@ int bam_read_idx_test_main(int argc, char** argv)
             start++;
         }
 
-        prev_readname = readname;
+        prev_tagvalue = tagvalue;
     }
 
     // check that all records were accessed
