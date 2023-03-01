@@ -3,15 +3,17 @@
 // Written by Jared Simpson (jared.simpson@oicr.on.ca)
 //---------------------------------------------------------
 //
-// bri - simple utility to provide random access to
-//       bam records by read name
+// Modified by kriemo 2023 to extract by tag rather than by readname
+//
+// bti - simple utility to provide random access to
+//       bam records by tag value
 //
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <getopt.h>
-#include "bri_index.h"
+#include "bti_index.h"
 
 //
 // Getopt
@@ -29,7 +31,7 @@ static const struct option longopts[] = {
 //
 void print_usage_show()
 {
-    fprintf(stderr, "usage: bri show <index_filename.bri>\n");
+    fprintf(stderr, "usage: bti show <index_filename.bti>\n");
 }
 
 int bam_read_idx_show_main(int argc, char** argv)
@@ -44,7 +46,7 @@ int bam_read_idx_show_main(int argc, char** argv)
     }
     
     if (argc - optind < 1) {
-        fprintf(stderr, "bri show: not enough arguments\n");
+        fprintf(stderr, "bti show: not enough arguments\n");
         die = 1;
     }
 
@@ -53,11 +55,11 @@ int bam_read_idx_show_main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    char* input_bri = argv[optind++];
-    bam_read_idx* bri = bam_read_idx_load(NULL, input_bri);
+    char* input_bti = argv[optind++];
+    bam_read_idx* bti = bam_read_idx_load(NULL, input_bti);
 
-    for(size_t i = 0; i < bri->record_count; ++i) {
-        printf("%s %zu\n", bri->records[i].read_name.ptr, bri->records[i].n_aln);
+    for(size_t i = 0; i < bti->record_count; ++i) {
+        printf("%s %zu\n", bti->records[i].read_name.ptr, bti->records[i].n_aln);
     }
 
     return 0;

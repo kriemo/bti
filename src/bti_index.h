@@ -3,8 +3,10 @@
 // Written by Jared Simpson (jared.simpson@oicr.on.ca)
 //---------------------------------------------------------
 //
-// bri - simple utility to provide random access to
-//       bam records by read name
+// Modified by kriemo 2023 to extract by tag rather than by readname
+//
+// bti - simple utility to provide random access to
+//       bam records by tag value
 //
 #ifndef BAM_READ_IDX_INDEX
 #define BAM_READ_IDX_INDEX
@@ -59,14 +61,14 @@ typedef struct bam_read_idx
 // load the index for input_bam file
 // returns a pointer to the index, which must be deallocated by
 // the caller using bam_read_idx_destroy.
-bam_read_idx* bam_read_idx_load(const char* input_bam, const char* input_bri);
+bam_read_idx* bam_read_idx_load(const char* input_bam, const char* input_bti);
 
 // construct the index for input_bam and save it to disk
 // to use the created index bam_read_idx_load should be called
-void bam_read_idx_build(const char* input_bam, const char* output_bri);
+void bam_read_idx_build(const char* input_bam, const char* output_bti, const char* tag);
 
 // cleanup the index by deallocating everything
-void bam_read_idx_destroy(bam_read_idx* bri);
+void bam_read_idx_destroy(bam_read_idx* bti);
 
 // main of subprogram - build an index for a file
 // given in the command line arguments

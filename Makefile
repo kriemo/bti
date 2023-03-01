@@ -24,7 +24,7 @@ HTS_INCLUDE = -I$(HTSDIR)/
 endif
 
 # Main programs to build
-PROGRAM = bri
+PROGRAM = bti
 
 .PHONY: all
 all: $(PROGRAM)
@@ -42,7 +42,7 @@ C_OBJ = $(C_SRC:.c=.o)
 .c.o:
 	$(CC) -o $@ -c $(CFLAGS) $(CPPFLAGS) $(HTS_INCLUDE) -fPIC $<
 
-bri: $(C_OBJ)
+bti: $(C_OBJ)
 	$(CC) -o $@ $(CFLAGS) $(CPPFLAGS) $(HTS_INCLUDE) -fPIC $(C_OBJ) $(HTS_LIB) $(LIBS)
 
 .PHONY: test

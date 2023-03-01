@@ -3,11 +3,13 @@
 // Written by Jared Simpson (jared.simpson@oicr.on.ca)
 //---------------------------------------------------------
 //
-// bri - simple utility to provide random access to
-//       bam records by read name
+// Modified by kriemo 2023 to extract by tag rather than by readname
 //
-#ifndef BAM_READ_IDX_SHOW
-#define BAM_READ_IDX_SHOW
+// bti - simple utility to provide random access to
+//       bam records by tag value
+//
+#ifndef BAM_READ_IDX_TEST
+#define BAM_READ_IDX_TEST
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +19,7 @@
 #include <htslib/hts.h>
 #include <htslib/bgzf.h>
 
-// main of the "show" subprogram
-int bam_read_idx_show_main(int argc, char** argv);
+// main of the "test" subprogram
+int bam_read_idx_test_main(int argc, char** argv);
 
 #endif
