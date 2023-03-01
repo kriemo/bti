@@ -34,7 +34,7 @@ void print_usage_get()
 }
 
 // comparator used by bsearch, direct strcmp through the name pointer
-int compare_records_by_readname_ptr(const void* r1, const void* r2)
+int compare_records_by_tagvalue_ptr(const void* r1, const void* r2)
 {
     const char* n1 = ((bam_read_idx_record*)r1)->read_name.ptr;
     const char* n2 = ((bam_read_idx_record*)r2)->read_name.ptr;
@@ -42,16 +42,16 @@ int compare_records_by_readname_ptr(const void* r1, const void* r2)
 }
 
 //
-void bam_read_idx_get_range(const bam_read_idx* bti, const char* readname, bam_read_idx_record** start, bam_read_idx_record** end)
+void bam_read_idx_get_range(const bam_read_idx* bti, const char* tagvalue, bam_read_idx_record** start, bam_read_idx_record** end)
 {
     // construct a query record to pass to bsearch
     bam_read_idx_record query;
-    query.read_name.ptr = readname;
+    query.read_name.ptr = tagvalue;
     query.file_offset = 0;
 
-    // if rec is NULL then readname does not appear in index
+    // if rec is NULL then tagvalue does not appear in index
     bam_read_idx_record* rec = 
-        bsearch(&query, bti->records, bti->record_count, sizeof(bam_read_idx_record), compare_records_by_readname_ptr);
+        bsearch(&query, bti->records, bti->record_count, sizeof(bam_read_idx_record), compare_records_by_tagvalue_ptr);
     if(rec == NULL) {
         *start = NULL;
         *end = NULL;
@@ -67,12 +67,12 @@ void bam_read_idx_get_range(const bam_read_idx* bti, const char* readname, bam_r
     while(sri > 0 && bti->records[sri].read_name.ptr == bti->records[sri - 1].read_name.ptr) {
         sri -= 1;
     }
-    assert(strcmp(bti->records[sri].read_name.ptr, readname) == 0);
+    assert(strcmp(bti->records[sri].read_name.ptr, tagvalue) == 0);
 
     do {
         eri += 1;
     } while(eri < bti->record_count && bti->records[eri].read_name.ptr == bti->records[sri].read_name.ptr);
-    assert(eri == bti->record_count || strcmp(bti->records[eri].read_name.ptr, readname) != 0);
+    assert(eri == bti->record_count || strcmp(bti->records[eri].read_name.ptr, tagvalue) != 0);
     //fprintf(stderr, "r: %zu sri: %zu eri: %zu\n", rec - bti->records, sri, eri);
     *start = &bti->records[sri];
     *end = &bti->records[eri];
@@ -135,8 +135,8 @@ int bam_read_idx_get_main(int argc, char** argv)
     bam_read_idx_record* end;
 
     for(int i = optind; i < argc; i++) {
-        char* readname = argv[i];
-        bam_read_idx_get_range(bti, readname, &start, &end);
+        char* tagvalue = argv[i];
+        bam_read_idx_get_range(bti, tagvalue, &start, &end);
         
         bam1_t *b = bam_init1();
         int n_rec = 0;

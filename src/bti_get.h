@@ -19,12 +19,12 @@
 #include <htslib/hts.h>
 #include <htslib/bgzf.h>
 
-// retrieve pointers to the range of records for readname
-// start and end will be NULL if readname is not in the index
-// otherwise start will point at the first record with readname 
-// and end will point to one-past the last record with readname
+// retrieve pointers to the range of records for tagvalue
+// start and end will be NULL if tagvalue is not in the index
+// otherwise start will point at the first record with tagvalue 
+// and end will point to one-past the last record with tagvalue
 void bam_read_idx_get_range(const bam_read_idx* bti, 
-                            const char* readname, 
+                            const char* tagvalue, 
                             bam_read_idx_record** start, 
                             bam_read_idx_record** end);
 

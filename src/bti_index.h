@@ -20,14 +20,14 @@
 #include <htslib/bgzf.h>
 
 // An entry record in the index, storing
-// either an offset or pointer to the readname
+// either an offset or pointer to the tagvalue
 // and a position in the bgzf-compressed bam file.
-// Also stores the # of alignments with a given tag/readname
+// Also stores the # of alignments with a given tag/tagvalue
 typedef struct bam_read_idx_record
 {
     // When building the index and storing it on disk
     // the read name for this record is stored as an
-    // offset into readnames. When it is loaded from
+    // offset into tagvalues. When it is loaded from
     // disk the size of the index is fixed and we
     // convert the offset into a direct pointer.
     union read_name {
@@ -50,7 +50,7 @@ typedef struct bam_read_idx
     // of memory as null terminated strings
     size_t name_capacity_bytes;
     size_t name_count_bytes;
-    char* readnames;
+    char* tagvalues;
 
     // records giving the offset into the bam file
     size_t record_capacity;

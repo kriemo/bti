@@ -54,7 +54,7 @@ bam_read_idx* bam_read_idx_init()
 
     bti->name_capacity_bytes = 0;
     bti->name_count_bytes = 0;
-    bti->readnames = NULL;
+    bti->tagvalues = NULL;
 
     bti->record_capacity = 0;
     bti->record_count = 0;
@@ -69,8 +69,8 @@ void bam_read_idx_destroy(bam_read_idx* bti)
 #ifdef bti_INDEX_DEBUG
     fprintf(stderr, "[bti-destroy] %zu name bytes %zu records\n", bti->name_count_bytes, bti->record_count);
 #endif
-    free(bti->readnames);
-    bti->readnames = NULL;
+    free(bti->tagvalues);
+    bti->tagvalues = NULL;
 
     free(bti->records);
     bti->records = NULL;
@@ -80,7 +80,7 @@ void bam_read_idx_destroy(bam_read_idx* bti)
 
 // comparison function used by quicksort, names pointers to a block of C strings
 // and allows us to indirectly sorted records by their offset.
-int compare_records_by_readname_offset(const void* r1, const void* r2, void* names)
+int compare_records_by_tagvalue_offset(const void* r1, const void* r2, void* names)
 {
     const char* cnames = (const char*)names;
     const char* n1 = cnames + ((bam_read_idx_record*)r1)->read_name.offset;
@@ -93,20 +93,20 @@ void bam_read_idx_save(bam_read_idx* bti, const char* filename)
 {
     FILE* fp = fopen(filename, "wb");
 
-    // Sort records by readname
-    sort_r(bti->records, bti->record_count, sizeof(bam_read_idx_record), compare_records_by_readname_offset, bti->readnames);
+    // Sort records by tagvalue
+    sort_r(bti->records, bti->record_count, sizeof(bam_read_idx_record), compare_records_by_tagvalue_offset, bti->tagvalues);
     
     // write header, containing file version, the size (in bytes) of the read names
-    // and the number of records. The readnames size is a placeholder and will be
+    // and the number of records. The tagvalues size is a placeholder and will be
     // corrected later.
     
     // version
     size_t FILE_VERSION = 1;
     fwrite(&FILE_VERSION, sizeof(FILE_VERSION), 1, fp);
     
-    // readname length
-    size_t readname_bytes = 0;
-    fwrite(&readname_bytes, sizeof(readname_bytes), 1, fp);
+    // tagvalue length
+    size_t tagvalue_bytes = 0;
+    fwrite(&tagvalue_bytes, sizeof(tagvalue_bytes), 1, fp);
 
     // num records
     fwrite(&bti->record_count, sizeof(bti->record_count), 1, fp);
@@ -114,7 +114,7 @@ void bam_read_idx_save(bam_read_idx* bti, const char* filename)
     // Pass 1: count up the number of non-redundant read names, write them to disk
     // Also store the position in the file where the read name for each record was written
     size_t* disk_offsets_by_record = malloc(bti->record_count * sizeof(size_t));
-    const char* rn = bti->readnames; // for convenience 
+    const char* rn = bti->tagvalues; // for convenience 
 
     for(size_t i = 0; i < bti->record_count; ++i) {
         
@@ -122,17 +122,17 @@ void bam_read_idx_save(bam_read_idx* bti, const char* filename)
             strcmp(rn + bti->records[i].read_name.offset, rn + bti->records[i - 1].read_name.offset) == 0;
         
         if(!redundant) {
-            disk_offsets_by_record[i] = readname_bytes; // current position in file
+            disk_offsets_by_record[i] = tagvalue_bytes; // current position in file
             size_t len = strlen(rn + bti->records[i].read_name.offset) + 1;
             fwrite(rn + bti->records[i].read_name.offset, len, 1, fp);
-            readname_bytes += len;
+            tagvalue_bytes += len;
         } else {
             disk_offsets_by_record[i] = disk_offsets_by_record[i - 1];
         }
 
 #ifdef bti_INDEX_DEBUG
         fprintf(stderr, "record %zu name: %s redundant: %d do: %zu offset: %zu\n", 
-            i, bti->readnames + bti->records[i].read_name.offset, redundant, disk_offsets_by_record[i], bti->records[i].file_offset);
+            i, bti->tagvalues + bti->records[i].read_name.offset, redundant, disk_offsets_by_record[i], bti->records[i].file_offset);
 #endif
     }
 
@@ -144,36 +144,36 @@ void bam_read_idx_save(bam_read_idx* bti, const char* filename)
         fwrite(&btir, sizeof(btir), 1, fp);
 #ifdef bti_INDEX_DEBUG
         fprintf(stderr, "[bti-save] record %zu %s name offset: %zu file offset: %zu\n", 
-            i, bti->readnames + bti->records[i].read_name.offset, disk_offsets_by_record[i], bti->records[i].file_offset);
+            i, bti->tagvalues + bti->records[i].read_name.offset, disk_offsets_by_record[i], bti->records[i].file_offset);
 #endif
     }
     
     // finish by writing the actual size of the read name segment
     fseek(fp, sizeof(FILE_VERSION), SEEK_SET);
-    fwrite(&readname_bytes, sizeof(readname_bytes), 1, fp);
+    fwrite(&tagvalue_bytes, sizeof(tagvalue_bytes), 1, fp);
 
     free(disk_offsets_by_record);
     fclose(fp);
 }
 
 // add a record to the index, growing the dynamic arrays as necessary
-void bam_read_idx_add(bam_read_idx* bti, const char* readname, size_t offset)
+void bam_read_idx_add(bam_read_idx* bti, const char* tagvalue, size_t offset)
 {
     // 
-    // add readname to collection if not seen, otherwise keep original offset
+    // add tagvalue to collection if not seen, otherwise keep original offset
     //
 
     if(bti->record_count > 0){
-        const char* orn = bti->readnames + bti->records[bti->record_count - 1].read_name.offset ;
-        if(strcmp(orn, readname) == 0) {
+        const char* orn = bti->tagvalues + bti->records[bti->record_count - 1].read_name.offset ;
+        if(strcmp(orn, tagvalue) == 0) {
             bti->records[bti->record_count - 1].n_aln += 1; 
           //  bti->records[bti->record_count - 1].file_offset = offset;
-           // printf("%s %s\n", bti->readnames + bti->records[bti->record_count - 1].read_name.offset, readname);
+           // printf("%s %s\n", bti->tagvalues + bti->records[bti->record_count - 1].read_name.offset, tagvalue);
             return;
         }
     }
     
-    size_t len = strlen(readname) + 1;
+    size_t len = strlen(tagvalue) + 1;
     if(bti->name_capacity_bytes <= bti->name_count_bytes + len) {
 
         // if already allocated double size, if initialization start with 1Mb
@@ -182,8 +182,8 @@ void bam_read_idx_add(bam_read_idx* bti, const char* readname, size_t offset)
         fprintf(stderr, "[bti] allocating %zu bytes for names\n", bti->name_capacity_bytes);
 #endif
     
-        bti->readnames = realloc(bti->readnames, bti->name_capacity_bytes);
-        if(bti->readnames == NULL) {
+        bti->tagvalues = realloc(bti->tagvalues, bti->name_capacity_bytes);
+        if(bti->tagvalues == NULL) {
             fprintf(stderr, "[bti] malloc failed\n");
             exit(EXIT_FAILURE);
         }
@@ -198,9 +198,9 @@ void bam_read_idx_add(bam_read_idx* bti, const char* readname, size_t offset)
     
     // copy name
     size_t name_offset = bti->name_count_bytes;
-    strncpy(bti->readnames + bti->name_count_bytes, readname, len);
+    strncpy(bti->tagvalues + bti->name_count_bytes, tagvalue, len);
     bti->name_count_bytes += len;
-    assert(bti->readnames[bti->name_count_bytes - 1] == '\0');
+    assert(bti->tagvalues[bti->name_count_bytes - 1] == '\0');
 
     //
     // add record
@@ -237,16 +237,16 @@ void bam_read_idx_build(const char* filename, const char* output_bti, const char
     int niter = 0;
     size_t file_offset = bgzf_tell(fp->fp.bgzf);
     while ((ret = sam_read1(fp, h, b)) >= 0) {
-        char* readname ;
+        char* tagvalue ;
         uint8_t* aux_info = bam_aux_get(b, tag) ;
         if (aux_info) {
-            readname = bam_aux2Z(aux_info) ;
+            tagvalue = bam_aux2Z(aux_info) ;
         } else {
             file_offset = bgzf_tell(fp->fp.bgzf);
             continue;
         }
         
-        bam_read_idx_add(bti, readname, file_offset);
+        bam_read_idx_add(bti, tagvalue, file_offset);
 
         bam_read_idx_record btir = bti->records[bti->record_count - 1];
         if(verbose && (niter == 1 || niter % 100000 == 0)) {
@@ -254,7 +254,7 @@ void bam_read_idx_build(const char* filename, const char* output_bti, const char
                 bti->record_count,
                 btir.read_name.offset,
                 btir.file_offset,
-                bti->readnames + btir.read_name.offset
+                bti->tagvalues + btir.read_name.offset
             );
         }
         niter += 1;
@@ -322,8 +322,8 @@ bam_read_idx* bam_read_idx_load(const char* input_bam, const char* input_bti)
     bti->record_capacity = bti->record_count;
 
     // allocate filenames
-    bti->readnames = malloc(bti->name_capacity_bytes);
-    if(bti->readnames == NULL) {
+    bti->tagvalues = malloc(bti->name_capacity_bytes);
+    if(bti->tagvalues == NULL) {
         fprintf(stderr, "[bti] failed to allocate %zu bytes for read names\n", bti->name_capacity_bytes);
         exit(EXIT_FAILURE);
     }
@@ -332,7 +332,7 @@ bam_read_idx* bam_read_idx_load(const char* input_bam, const char* input_bti)
     bti->records = malloc(bti->record_capacity * sizeof(bam_read_idx_record));
 
     // read the names
-    bytes_read = fread(bti->readnames, bti->name_count_bytes, 1, fp);
+    bytes_read = fread(bti->tagvalues, bti->name_count_bytes, 1, fp);
     if(bytes_read <= 0) {
         print_error_and_exit("read error");
     }
@@ -345,7 +345,7 @@ bam_read_idx* bam_read_idx_load(const char* input_bam, const char* input_bti)
 
     // convert read name offsets to direct pointers
     for(size_t i = 0; i < bti->record_count; ++i) {
-        bti->records[i].read_name.ptr = bti->readnames + bti->records[i].read_name.offset;
+        bti->records[i].read_name.ptr = bti->tagvalues + bti->records[i].read_name.offset;
 #ifdef bti_INDEX_DEBUG
         fprintf(stderr, "[bti-load] record %zu %s %zu\n", i, bti->records[i].read_name.ptr, bti->records[i].file_offset);
 #endif
